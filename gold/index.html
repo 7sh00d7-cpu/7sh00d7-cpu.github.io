@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>بوت تحليل الذهب — XAUUSD</title>
+<meta name="description" content="بوت ذكي لتحليل سوق الذهب: يقرأ الشارت ويحدد السيولة ومناطق البيع والشراء ويعطي صفقة محتملة بناءً على الأخبار.">
+<style>
+  :root{
+    --ground:#0f0d0a;
+    --surface:#1a1611;
+    --surface-2:#221d16;
+    --ink:#f2ead9;
+    --muted:#a99e88;
+    --line:#332c22;
+    --gold:#e5b567;
+    --gold-soft:#c9a35a;
+    --green:#3fbf7f;
+    --green-bg:rgba(63,191,127,.12);
+    --red:#e5675f;
+    --red-bg:rgba(229,103,95,.12);
+    --blue:#5aa9e6;
+    --amber:#e5b567;
+    --shadow:0 10px 40px rgba(0,0,0,.45);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 100% -10%, rgba(229,181,103,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(90,169,230,.06), transparent 55%),
+      var(--ground);
+    color:var(--ink);
+    font-family:"Segoe UI","Noto Kufi Arabic","Tajawal",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.65;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--gold)}
+  .wrap{max-width:920px;margin:0 auto;padding:20px 16px 80px}
+
+  header.app{
+    display:flex;align-items:center;gap:14px;margin:8px 0 22px;
+  }
+  .logo{
+    width:52px;height:52px;border-radius:14px;flex:0 0 auto;
+    background:linear-gradient(145deg,#f0c777,#b3873f);
+    display:grid;place-items:center;font-size:26px;
+    box-shadow:0 6px 20px rgba(229,181,103,.35), inset 0 1px 2px rgba(255,255,255,.4);
+  }
+  header.app h1{font-size:20px;margin:0;letter-spacing:.2px}
+  header.app p{margin:2px 0 0;color:var(--muted);font-size:13px}
+
+  .card{
+    background:linear-gradient(180deg,var(--surface),var(--surface-2));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;margin-bottom:16px;
+    box-shadow:var(--shadow);
+  }
+  .card h2{font-size:15px;margin:0 0 14px;display:flex;align-items:center;gap:8px;color:var(--ink)}
+  .card h2 .ic{font-size:18px}
+  .sub{color:var(--muted);font-size:12.5px;margin:-6px 0 14px}
+
+  label.fld{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
+  input[type=text],input[type=password],input[type=number],select,textarea{
+    width:100%;background:#100d09;border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--gold-soft);box-shadow:0 0 0 3px rgba(229,181,103,.15)}
+  textarea{resize:vertical;min-height:70px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1 1 160px;min-width:0}
+  .mt{margin-top:12px}
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:inherit;font-weight:700;
+    border-radius:12px;padding:13px 18px;font-size:15px;transition:transform .08s, filter .15s, background .15s;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-gold{background:linear-gradient(145deg,#f0c777,#c99a44);color:#1a1206;box-shadow:0 6px 18px rgba(229,181,103,.3)}
+  .btn-gold:hover{filter:brightness(1.05)}
+  .btn-ghost{background:#211c15;color:var(--ink);border:1px solid var(--line)}
+  .btn-ghost:hover{background:#2a241b}
+  .btn:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.3)}
+  .btn.wide{width:100%}
+
+  details.settings summary{cursor:pointer;list-style:none;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+  details.settings summary::-webkit-details-marker{display:none}
+  details.settings summary .chev{margin-inline-start:auto;transition:transform .2s;color:var(--muted)}
+  details.settings[open] summary .chev{transform:rotate(180deg)}
+
+  /* dropzone */
+  .drop{
+    border:2px dashed var(--line);border-radius:14px;padding:26px 16px;text-align:center;
+    color:var(--muted);cursor:pointer;transition:.15s;background:#120f0b;
+  }
+  .drop:hover,.drop.over{border-color:var(--gold-soft);background:#171208;color:var(--ink)}
+  .drop .big{font-size:30px;display:block;margin-bottom:6px}
+  .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .thumb{position:relative;width:120px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
+  .thumb img{display:block;width:100%;height:78px;object-fit:cover}
+  .thumb input{border:none;border-top:1px solid var(--line);border-radius:0;padding:6px 8px;font-size:12px;text-align:center;background:#161209}
+  .thumb .x{position:absolute;top:4px;inset-inline-end:4px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;
+    width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center}
+
+  /* news */
+  .newsList{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}
+  .newsItem{display:flex;gap:10px;align-items:flex-start;background:#141009;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .newsItem input{margin-top:4px;accent-color:var(--gold);width:16px;height:16px;flex:0 0 auto}
+  .newsItem .t{font-size:13px}
+  .newsItem .m{font-size:11px;color:var(--muted);margin-top:2px}
+
+  /* status */
+  .status{display:none;align-items:center;gap:12px;color:var(--muted);font-size:14px;margin-top:14px}
+  .status.on{display:flex}
+  .spinner{width:20px;height:20px;border:3px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;flex:0 0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .banner{border-radius:10px;padding:10px 12px;font-size:13px;margin-top:12px;display:none}
+  .banner.on{display:block}
+  .banner.err{background:var(--red-bg);border:1px solid rgba(229,103,95,.4);color:#ffb4ae}
+  .banner.info{background:rgba(90,169,230,.1);border:1px solid rgba(90,169,230,.35);color:#a9d4f5}
+
+  /* results */
+  #results{display:none}
+  #results.on{display:block}
+  .trade-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .trade-head{padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .trade-head.buy{background:linear-gradient(180deg,rgba(63,191,127,.18),transparent);border-bottom:1px solid rgba(63,191,127,.3)}
+  .trade-head.sell{background:linear-gradient(180deg,rgba(229,103,95,.18),transparent);border-bottom:1px solid rgba(229,103,95,.3)}
+  .trade-head.none{background:linear-gradient(180deg,rgba(169,158,136,.12),transparent);border-bottom:1px solid var(--line)}
+  .dir-pill{font-weight:800;font-size:16px;padding:6px 14px;border-radius:999px}
+  .dir-pill.buy{background:var(--green);color:#062615}
+  .dir-pill.sell{background:var(--red);color:#2a0a08}
+  .dir-pill.none{background:#3a332794;color:var(--ink)}
+  .conf{margin-inline-start:auto;text-align:center}
+  .conf .num{font-size:22px;font-weight:800}
+  .conf .lbl{font-size:11px;color:var(--muted)}
+  .levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--line)}
+  .lvl{background:var(--surface);padding:12px 14px}
+  .lvl .k{font-size:11px;color:var(--muted);margin-bottom:3px}
+  .lvl .v{font-size:15px;font-weight:700;word-break:break-word}
+  .lvl.entry .v{color:var(--gold)}
+  .lvl.sl .v{color:var(--red)}
+  .lvl.tp .v{color:var(--green)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:620px){.grid2{grid-template-columns:1fr}}
+  .zone-box{background:#141009;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .zone-box h3{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:6px}
+  .zone-box.demand h3{color:var(--green)}
+  .zone-box.supply h3{color:var(--red)}
+  .zone-box.buyliq h3{color:var(--blue)}
+  .zone-box.sellliq h3{color:var(--amber)}
+  .zone-box ul{margin:0;padding-inline-start:18px;font-size:13px}
+  .zone-box li{margin:4px 0}
+  .zone-box li .note{color:var(--muted);font-size:12px}
+
+  .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .pill{background:#1d1810;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12.5px;color:var(--muted)}
+  .pill b{color:var(--ink)}
+
+  .block{background:#141009;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+  .block h3{margin:0 0 6px;font-size:13.5px;display:flex;gap:7px;align-items:center}
+  .block p{margin:0;font-size:13.5px;color:#ded4c0}
+  .warnlist{list-style:none;padding:0;margin:6px 0 0}
+  .warnlist li{background:var(--red-bg);border:1px solid rgba(229,103,95,.3);border-radius:9px;padding:8px 11px;font-size:12.5px;margin-top:6px;color:#f0c3bf}
+
+  .disclaimer{font-size:11.5px;color:var(--muted);text-align:center;margin-top:22px;line-height:1.7;border-top:1px solid var(--line);padding-top:16px}
+  .tag{display:inline-block;background:#1d1810;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11px;color:var(--muted)}
+  .muted{color:var(--muted)}
+  .hidden{display:none!important}
+  code.k{background:#100d09;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app">
+    <div class="logo">🪙</div>
+    <div>
+      <h1>بوت تحليل سوق الذهب</h1>
+      <p>XAUUSD · السيولة · مناطق البيع والشراء · قراءة الأخبار · صفقة محتملة</p>
+    </div>
+  </header>
+
+  <!-- الإعدادات -->
+  <div class="card">
+    <details class="settings" id="setBox">
+      <summary>
+        <span class="ic">⚙️</span> الإعدادات ومفتاح الاتصال
+        <span class="chev">▾</span>
+      </summary>
+      <div class="mt">
+        <p class="sub">
+          يعمل البوت بالكامل من متصفحك عبر <b>Claude API</b>. مفتاحك يُحفظ في متصفحك فقط (localStorage) ويُرسَل مباشرةً إلى Anthropic —
+          لا يمر عبر أي خادم وسيط. احصل على المفتاح من
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+        </p>
+        <label class="fld">مفتاح Claude API</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+        <div class="row mt">
+          <div>
+            <label class="fld">النموذج</label>
+            <select id="model">
+              <option value="claude-opus-5">Claude Opus 5 — الأدق (الأغلى)</option>
+              <option value="claude-sonnet-5" selected>Claude Sonnet 5 — متوازن (موصى به)</option>
+              <option value="claude-haiku-4-5">Claude Haiku 4.5 — الأسرع (الأرخص)</option>
+              <option value="claude-opus-4-8">Claude Opus 4.8</option>
+            </select>
+          </div>
+          <div>
+            <label class="fld">لغة التحليل</label>
+            <select id="lang">
+              <option value="ar" selected>العربية</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+        <div class="row mt">
+          <div>
+            <label class="fld">الزوج / الأصل</label>
+            <input type="text" id="pair" value="XAUUSD (الذهب)">
+          </div>
+          <div>
+            <label class="fld">رصيد الحساب (اختياري)</label>
+            <input type="number" id="balance" placeholder="مثال: 1000" min="0" step="any">
+          </div>
+          <div>
+            <label class="fld">المخاطرة % (اختياري)</label>
+            <input type="number" id="risk" placeholder="مثال: 1" min="0" step="any">
+          </div>
+        </div>
+        <button class="btn btn-ghost mt" id="saveSet" type="button">💾 حفظ الإعدادات</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- الأخبار -->
+  <div class="card">
+    <h2><span class="ic">📰</span> الأخبار الأساسية</h2>
+    <p class="sub">اجلب آخر عناوين الذهب تلقائياً، أو ألصق أخباراً بنفسك. يأخذها البوت بعين الاعتبار في التحليل.</p>
+    <div class="row">
+      <div style="flex:2 1 200px">
+        <label class="fld">فترة الأخبار</label>
+        <select id="newsWindow">
+          <option value="1d">آخر 24 ساعة</option>
+          <option value="2d" selected>آخر يومين</option>
+          <option value="7d">آخر أسبوع</option>
+        </select>
+      </div>
+      <div style="flex:1 1 150px;display:flex;align-items:flex-end">
+        <button class="btn btn-ghost wide" id="fetchNews" type="button">⟳ جلب الأخبار</button>
+      </div>
+    </div>
+    <div class="banner info" id="newsMsg"></div>
+    <div class="newsList" id="newsList"></div>
+    <label class="fld mt">أو ألصق أخباراً / سياقاً أساسياً يدوياً</label>
+    <textarea id="newsManual" placeholder="مثال: قرار الفيدرالي الأمريكي بخصوص الفائدة، بيانات التضخم CPI، تصريحات باول، الدولار DXY..."></textarea>
+  </div>
+
+  <!-- الشارت -->
+  <div class="card">
+    <h2><span class="ic">📈</span> الشارت</h2>
+    <p class="sub">ارفع صورة الشارت (أو أكثر من فريم). يمكنك أيضاً لصق صورة من الحافظة مباشرةً (Ctrl+V).</p>
+    <div class="drop" id="drop">
+      <span class="big">🖼️</span>
+      اسحب صورة الشارت هنا أو اضغط للاختيار — أو الصق بـ Ctrl+V
+    </div>
+    <input type="file" id="file" accept="image/*" multiple class="hidden">
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+
+  <button class="btn btn-gold wide" id="analyze" type="button" style="font-size:17px;padding:16px">
+    ⚡ حلّل وأعطني صفقة محتملة
+  </button>
+
+  <div class="status" id="status"><div class="spinner"></div><span id="statusTxt">جارٍ التحليل…</span></div>
+  <div class="banner err" id="errMsg"></div>
+
+  <!-- النتائج -->
+  <div id="results" class="mt"></div>
+
+  <p class="disclaimer">
+    ⚠️ هذا التحليل لأغراض تعليمية فقط وليس نصيحة مالية أو توصية استثمارية. سوق الذهب عالي المخاطر؛
+    التحليل مبني على قراءة الذكاء الاصطناعي لصورة الشارت وقد يخطئ في قراءة المستويات.
+    تحقّق دائماً من الأسعار بنفسك ولا تخاطر بأكثر مما تتحمّل خسارته.
+    <br><span class="muted">لا يُرسَل مفتاحك أو الشارت لأي جهة سوى Anthropic. عناوين الأخبار تُجلب عبر وسيط عام مفتوح المصدر.</span>
+  </p>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const store = {
+  get k(){return localStorage.getItem('gb_key')||''},   set k(v){localStorage.setItem('gb_key',v)},
+  get m(){return localStorage.getItem('gb_model')||'claude-sonnet-5'}, set m(v){localStorage.setItem('gb_model',v)},
+  get l(){return localStorage.getItem('gb_lang')||'ar'}, set l(v){localStorage.setItem('gb_lang',v)},
+  get p(){return localStorage.getItem('gb_pair')||'XAUUSD (الذهب)'}, set p(v){localStorage.setItem('gb_pair',v)},
+  get b(){return localStorage.getItem('gb_bal')||''}, set b(v){localStorage.setItem('gb_bal',v)},
+  get r(){return localStorage.getItem('gb_risk')||''}, set r(v){localStorage.setItem('gb_risk',v)},
+};
+
+  // ---- load saved settings
+  $('#apiKey').value = store.k;
+  $('#model').value  = store.m;
+  $('#lang').value   = store.l;
+  $('#pair').value   = store.p;
+  $('#balance').value= store.b;
+  $('#risk').value   = store.r;
+  if(!store.k){ $('#setBox').open = true; }
+
+  function saveSettings(){
+    store.k = $('#apiKey').value.trim();
+    store.m = $('#model').value;
+    store.l = $('#lang').value;
+    store.p = $('#pair').value.trim();
+    store.b = $('#balance').value.trim();
+    store.r = $('#risk').value.trim();
+  }
+  $('#saveSet').addEventListener('click', ()=>{
+    saveSettings();
+    const b=$('#saveSet'); const t=b.textContent; b.textContent='✓ تم الحفظ'; setTimeout(()=>b.textContent=t,1500);
+  });
+  ['#apiKey','#model','#lang','#pair','#balance','#risk'].forEach(id=>$(id).addEventListener('change',saveSettings));
+
+  // =========================================================
+  //  الصور
+  // =========================================================
+  let images = []; // {id, dataUrl, media_type, b64, label}
+  const MAX_SIDE = 1568;
+
+  function fileToImage(file){
+    return new Promise((resolve,reject)=>{
+      if(!file.type.startsWith('image/')){reject(new Error('الملف ليس صورة'));return;}
+      const fr = new FileReader();
+      fr.onload = ()=>{
+        const img = new Image();
+        img.onload = ()=>{
+          let {width:w, height:h} = img;
+          const scale = Math.min(1, MAX_SIDE/Math.max(w,h));
+          w = Math.round(w*scale); h = Math.round(h*scale);
+          const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          // نستخدم JPEG لتقليل الحجم إلا لو كانت شفافة (PNG صغيرة)
+          const mt = 'image/jpeg';
+          const dataUrl = cv.toDataURL(mt, 0.9);
+          resolve({media_type:mt, dataUrl, b64:dataUrl.split(',')[1]});
+        };
+        img.onerror = ()=>reject(new Error('تعذّر قراءة الصورة'));
+        img.src = fr.result;
+      };
+      fr.onerror = ()=>reject(new Error('تعذّر قراءة الملف'));
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function addFiles(fileList){
+    for(const f of fileList){
+      try{
+        const im = await fileToImage(f);
+        images.push({id:Math.random().toString(36).slice(2), ...im, label:''});
+      }catch(e){ showErr(e.message); }
+    }
+    renderThumbs();
+  }
+
+  function renderThumbs(){
+    const box = $('#thumbs'); box.innerHTML='';
+    images.forEach((im,i)=>{
+      const d = document.createElement('div'); d.className='thumb';
+      d.innerHTML = `<button class="x" title="حذف">✕</button>
+        <img src="${im.dataUrl}" alt="chart">
+        <input type="text" placeholder="الفريم؟ مثال: H4" value="${im.label||''}">`;
+      d.querySelector('.x').onclick = ()=>{ images.splice(i,1); renderThumbs(); };
+      d.querySelector('input').oninput = e=>{ im.label = e.target.value; };
+      box.appendChild(d);
+    });
+  }
+
+  const drop = $('#drop');
+  drop.addEventListener('click', ()=>$('#file').click());
+  $('#file').addEventListener('change', e=>{ addFiles(e.target.files); e.target.value=''; });
+  ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+  drop.addEventListener('drop', e=>{ if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+  window.addEventListener('paste', e=>{
+    const items = e.clipboardData?.items||[];
+    const files=[];
+    for(const it of items){ if(it.type.startsWith('image/')){ const f=it.getAsFile(); if(f) files.push(f); } }
+    if(files.length){ addFiles(files); }
+  });
+
+  // =========================================================
+  //  الأخبار
+  // =========================================================
+  let newsItems = []; // {title, meta, checked}
+  const PROXIES = [
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+    u => 'https://thingproxy.freeboard.io/fetch/' + u,
+  ];
+
+  async function fetchWithProxy(url){
+    let lastErr;
+    for(const wrap of PROXIES){
+      try{
+        const res = await fetch(wrap(url), {headers:{'Accept':'text/xml, application/xml, */*'}});
+        if(!res.ok){ lastErr=new Error('HTTP '+res.status); continue; }
+        const txt = await res.text();
+        if(txt && txt.length>50) return txt;
+        lastErr = new Error('استجابة فارغة');
+      }catch(e){ lastErr=e; }
+    }
+    throw lastErr || new Error('تعذّر الجلب');
+  }
+
+  function newsBanner(msg,type){
+    const b=$('#newsMsg'); b.textContent=msg; b.className='banner '+(type||'info')+' on';
+  }
+
+  $('#fetchNews').addEventListener('click', async ()=>{
+    const btn=$('#fetchNews'); btn.disabled=true; const old=btn.textContent; btn.textContent='… جارٍ الجلب';
+    $('#newsMsg').className='banner';
+    try{
+      const when = $('#newsWindow').value;
+      const q = encodeURIComponent(`(XAUUSD OR "gold price" OR "gold market" OR "سعر الذهب") when:${when}`);
+      const rss = `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`;
+      const xml = await fetchWithProxy(rss);
+      const doc = new DOMParser().parseFromString(xml,'text/xml');
+      const items = [...doc.querySelectorAll('item')].slice(0,12);
+      if(!items.length){ newsBanner('لم أعثر على عناوين. جرّب لصق الأخبار يدوياً.','err'); return; }
+      newsItems = items.map(it=>{
+        const title = (it.querySelector('title')?.textContent||'').trim();
+        const date  = (it.querySelector('pubDate')?.textContent||'').trim();
+        let src=''; try{ src = it.getElementsByTagName('source')[0]?.textContent||''; }catch(_){}
+        const d = date? new Date(date): null;
+        const meta = [src, d? d.toLocaleString('ar',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''].filter(Boolean).join(' · ');
+        return {title, meta, checked:true};
+      });
+      renderNews();
+      newsBanner(`تم جلب ${newsItems.length} عنواناً. أزل ما لا يخص الذهب قبل التحليل.`,'info');
+    }catch(e){
+      newsBanner('تعذّر جلب الأخبار تلقائياً (قد يكون الوسيط محجوباً). الصق الأخبار يدوياً بالأسفل.','err');
+    }finally{ btn.disabled=false; btn.textContent=old; }
+  });
+
+  function renderNews(){
+    const box=$('#newsList'); box.innerHTML='';
+    newsItems.forEach((n,i)=>{
+      const d=document.createElement('div'); d.className='newsItem';
+      d.innerHTML = `<input type="checkbox" ${n.checked?'checked':''}>
+        <div><div class="t">${escapeHtml(n.title)}</div>${n.meta?`<div class="m">${escapeHtml(n.meta)}</div>`:''}</div>`;
+      d.querySelector('input').onchange = e=>{ n.checked = e.target.checked; };
+      box.appendChild(d);
+    });
+  }
+
+  function collectNews(){
+    const picked = newsItems.filter(n=>n.checked).map(n=>'• '+n.title).join('\n');
+    const manual = $('#newsManual').value.trim();
+    let out='';
+    if(picked) out += 'عناوين إخبارية حديثة عن الذهب:\n'+picked;
+    if(manual) out += (out?'\n\n':'') + 'سياق/أخبار أضافها المستخدم:\n'+manual;
+    return out;
+  }
+
+  // =========================================================
+  //  بناء الطلب والاتصال بـ Claude
+  // =========================================================
+  function systemPrompt(lang){
+    const langLine = lang==='ar'
+      ? 'اكتب كل النصوص داخل حقول JSON باللغة العربية.'
+      : 'Write all text values inside the JSON in English.';
+    return `أنت محلّل محترف لسوق الذهب (XAUUSD) خبير في منهجية السيولة والمال الذكي (Smart Money Concepts / ICT).
+مهمتك: تحليل صورة (أو صور) الشارت المرفقة وإعطاء صفقة محتملة قابلة للتنفيذ.
+
+اعتمد في تحليلك على:
+- هيكل السوق (Market Structure): القمم والقيعان الصاعدة/الهابطة، كسر الهيكل BOS، وتغيّر الطابع CHoCH.
+- السيولة (Liquidity): سيولة الشراء فوق القمم (buy-side / فوق Equal Highs) وسيولة البيع تحت القيعان (sell-side / تحت Equal Lows)، ومناطق كنس/جمع السيولة (Liquidity Sweep/Grab).
+- الأوردر بلوك (Order Blocks) وفجوات القيمة العادلة (FVG / Imbalance).
+- مناطق العرض والطلب (Supply & Demand) = مناطق البيع والشراء المؤسسية.
+- منطقة الخصم/العلاوة (Premium/Discount) و OTE للدخول الأمثل.
+- الأخبار الأساسية المُعطاة: استنتج منها التحيّز الأساسي (bullish/bearish للذهب) وادمجه مع التحليل الفني، وبيّن أي أحداث عالية التأثير (الفيدرالي، التضخم CPI، NFP، الدولار DXY، عوائد السندات، الجيوسياسة).
+
+اقرأ الأسعار والمستويات من محور السعر في الصورة قدر الإمكان. إن لم تكن المستويات واضحة فاذكر ذلك بوضوح داخل الحقول ولا تختلق أرقاماً دقيقة.
+إن لم توجد فرصة واضحة، اجعل has_setup=false واشرح لماذا يُفضّل الانتظار.
+كن واقعياً ومنضبطاً في إدارة المخاطر. ${langLine}
+
+أعِد ردّك حصراً ككائن JSON صالح واحد فقط (بدون أي نص قبله أو بعده وبدون علامات markdown) بهذا الشكل بالضبط:
+{
+  "pair": "الزوج",
+  "timeframe_note": "ملاحظة عن الفريمات التي حُللت",
+  "current_price_estimate": "السعر التقريبي الحالي من الشارت",
+  "bias": "صاعد | هابط | محايد",
+  "bias_reason": "سبب مختصر للتحيّز العام",
+  "market_structure": "وصف هيكل السوق والاتجاه وأي BOS/CHoCH",
+  "liquidity": {
+    "buy_side": ["مناطق سيولة الشراء فوق القمم مع المستوى التقريبي"],
+    "sell_side": ["مناطق سيولة البيع تحت القيعان مع المستوى التقريبي"]
+  },
+  "zones": {
+    "demand": [{"range":"نطاق الطلب/الشراء","note":"وصف مختصر"}],
+    "supply": [{"range":"نطاق العرض/البيع","note":"وصف مختصر"}]
+  },
+  "news": {
+    "impact": "إيجابي للذهب | سلبي للذهب | محايد | لا أخبار",
+    "summary": "ملخص تأثير الأخبار على الذهب",
+    "key_events": ["أهم الأحداث/الأرقام"]
+  },
+  "trade": {
+    "has_setup": true,
+    "direction": "شراء | بيع",
+    "order_type": "نوع الأمر (Buy Limit / Sell Limit / Buy Stop / Market ...)",
+    "entry": "منطقة/سعر الدخول",
+    "stop_loss": "وقف الخسارة",
+    "take_profits": ["الهدف 1","الهدف 2","الهدف 3"],
+    "risk_reward": "نسبة المخاطرة/العائد مثل 1:3",
+    "confidence": 0,
+    "invalidation": "ما الذي يُلغي هذا السيناريو",
+    "reasoning": "منطق الصفقة باختصار"
+  },
+  "confluences": ["عوامل التقاء تدعم الفكرة"],
+  "warnings": ["تحذيرات وإدارة مخاطر"]
+}
+"confidence" رقم من 0 إلى 100.`;
+  }
+
+  function buildUserContent(){
+    const content = [];
+    images.forEach((im,i)=>{
+      const lbl = im.label? ` (الفريم: ${im.label})` : ` رقم ${i+1}`;
+      content.push({type:'text', text:`صورة الشارت${lbl}:`});
+      content.push({type:'image', source:{type:'base64', media_type:im.media_type, data:im.b64}});
+    });
+    const news = collectNews();
+    const bal = $('#balance').value.trim();
+    const risk = $('#risk').value.trim();
+    let ctx = `الزوج/الأصل: ${$('#pair').value.trim()||'XAUUSD'}\n`;
+    if(bal) ctx += `رصيد الحساب: ${bal}\n`;
+    if(risk) ctx += `نسبة المخاطرة المطلوبة لكل صفقة: ${risk}%\n`;
+    ctx += news ? ('\n'+news) : '\nلا توجد أخبار مُدخلة — اعتمد على التحليل الفني مع ذكر أن الأخبار غير متوفرة.';
+    ctx += '\n\nحلّل الآن وأعطني الصفقة المحتملة كـ JSON فقط.';
+    content.push({type:'text', text:ctx});
+    return content;
+  }
+
+  async function callClaude(onDelta){
+    const key = $('#apiKey').value.trim();
+    if(!key) throw new Error('أدخل مفتاح Claude API في الإعدادات أولاً.');
+    if(!images.length) throw new Error('ارفع صورة الشارت أولاً.');
+
+    const body = {
+      model: $('#model').value,
+      max_tokens: 6000,
+      stream: true,
+      system: systemPrompt($('#lang').value),
+      messages: [{role:'user', content: buildUserContent()}]
+    };
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        'x-api-key': key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if(!res.ok){
+      let msg = 'HTTP '+res.status;
+      try{ const j=await res.json(); msg = j.error?.message || msg; }catch(_){}
+      if(res.status===401) msg = 'المفتاح غير صحيح أو منتهي (401). تحقّق من مفتاح Claude API.';
+      if(res.status===429) msg = 'تم تجاوز الحد المسموح (429). انتظر قليلاً وحاول مجدداً.';
+      throw new Error(msg);
+    }
+
+    // SSE streaming parse
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf='', full='';
+    while(true){
+      const {value,done} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value,{stream:true});
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for(const p of parts){
+        const line = p.split('\n').find(l=>l.startsWith('data:'));
+        if(!line) continue;
+        const data = line.slice(5).trim();
+        if(data==='[DONE]') continue;
+        let ev; try{ ev = JSON.parse(data); }catch(_){ continue; }
+        if(ev.type==='content_block_delta' && ev.delta?.type==='text_delta'){
+          full += ev.delta.text; onDelta && onDelta(full);
+        }
+        if(ev.type==='error'){ throw new Error(ev.error?.message||'خطأ من الخادم'); }
+      }
+    }
+    return full;
+  }
+
+  function extractJson(txt){
+    // إزالة أسوار markdown إن وجدت
+    let t = txt.trim().replace(/^```(json)?/i,'').replace(/```$/,'').trim();
+    const a = t.indexOf('{'), b = t.lastIndexOf('}');
+    if(a<0||b<0) throw new Error('لم أستطع قراءة نتيجة منظّمة. حاول مجدداً.');
+    return JSON.parse(t.slice(a,b+1));
+  }
+
+  // =========================================================
+  //  عرض النتائج
+  // =========================================================
+  function escapeHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function arr(x){return Array.isArray(x)?x:(x?[x]:[]);}
+
+  function render(r){
+    const t = r.trade||{};
+    const isBuy = /شراء|buy/i.test(t.direction||'');
+    const isSell = /بيع|sell/i.test(t.direction||'');
+    const has = t.has_setup!==false && (isBuy||isSell);
+    const dirClass = !has?'none':(isBuy?'buy':'sell');
+    const conf = Math.max(0,Math.min(100, Number(t.confidence)||0));
+
+    let biasColor = /صاعد|bull/i.test(r.bias||'')?'var(--green)':(/هابط|bear/i.test(r.bias||'')?'var(--red)':'var(--muted)');
+
+    let html = '';
+
+    // بطاقة الصفقة
+    html += `<div class="card">
+      <div class="trade-card">
+        <div class="trade-head ${dirClass}">
+          <span class="dir-pill ${dirClass}">${has?(isBuy?'▲ شراء':'▼ بيع'):'⏸ لا صفقة واضحة'}</span>
+          ${t.order_type?`<span class="pill"><b>${escapeHtml(t.order_type)}</b></span>`:''}
+          ${t.risk_reward?`<span class="pill">R:R <b>${escapeHtml(t.risk_reward)}</b></span>`:''}
+          <div class="conf"><div class="num" style="color:${conf>=66?'var(--green)':conf>=40?'var(--amber)':'var(--red)'}">${conf}%</div><div class="lbl">الثقة</div></div>
+        </div>`;
+
+    if(has){
+      const tps = arr(t.take_profits);
+      html += `<div class="levels">
+        <div class="lvl entry"><div class="k">الدخول</div><div class="v">${escapeHtml(t.entry||'—')}</div></div>
+        <div class="lvl sl"><div class="k">وقف الخسارة</div><div class="v">${escapeHtml(t.stop_loss||'—')}</div></div>
+        ${tps.map((tp,i)=>`<div class="lvl tp"><div class="k">هدف ${i+1}</div><div class="v">${escapeHtml(tp)}</div></div>`).join('')}
+      </div>`;
+    }
+    html += `</div>`; // trade-card
+
+    if(t.reasoning) html += `<div class="block"><h3>🧠 منطق الصفقة</h3><p>${escapeHtml(t.reasoning)}</p></div>`;
+    if(t.invalidation) html += `<div class="block"><h3>🚫 إلغاء السيناريو</h3><p>${escapeHtml(t.invalidation)}</p></div>`;
+    html += `</div>`; // card
+
+    // نظرة عامة
+    html += `<div class="card">
+      <h2><span class="ic">🧭</span> النظرة العامة والهيكل</h2>
+      <div class="pill-row">
+        <span class="pill">التحيّز: <b style="color:${biasColor}">${escapeHtml(r.bias||'—')}</b></span>
+        ${r.current_price_estimate?`<span class="pill">السعر التقريبي: <b>${escapeHtml(r.current_price_estimate)}</b></span>`:''}
+        ${r.timeframe_note?`<span class="pill">${escapeHtml(r.timeframe_note)}</span>`:''}
+      </div>
+      ${r.bias_reason?`<div class="block"><h3>سبب التحيّز</h3><p>${escapeHtml(r.bias_reason)}</p></div>`:''}
+      ${r.market_structure?`<div class="block"><h3>هيكل السوق</h3><p>${escapeHtml(r.market_structure)}</p></div>`:''}
+    </div>`;
+
+    // السيولة ومناطق البيع والشراء
+    const liq = r.liquidity||{}, z = r.zones||{};
+    const buySide = arr(liq.buy_side), sellSide = arr(liq.sell_side);
+    const demand = arr(z.demand), supply = arr(z.supply);
+    const zoneItem = it => typeof it==='string'? escapeHtml(it) : `${escapeHtml(it.range||'')}${it.note?` <span class="note">— ${escapeHtml(it.note)}</span>`:''}`;
+
+    html += `<div class="card">
+      <h2><span class="ic">💧</span> السيولة ومناطق البيع والشراء</h2>
+      <div class="grid2">
+        <div class="zone-box demand"><h3>🟢 مناطق الطلب (شراء)</h3><ul>${demand.length?demand.map(d=>`<li>${zoneItem(d)}</li>`).join(''):'<li class="muted">—</li>'}</ul></div>
+        <div class="zone-box supply"><h3>🔴 مناطق العرض (بيع)</h3><ul>${supply.length?supply.map(d=>`<li>${zoneItem(d)}</li>`).join(''):'<li class="muted">—</li>'}</ul></div>
+        <div class="zone-box buyliq"><h3>🔵 سيولة الشراء (فوق القمم)</h3><ul>${buySide.length?buySide.map(d=>`<li>${zoneItem(d)}</li>`).join(''):'<li class="muted">—</li>'}</ul></div>
+        <div class="zone-box sellliq"><h3>🟡 سيولة البيع (تحت القيعان)</h3><ul>${sellSide.length?sellSide.map(d=>`<li>${zoneItem(d)}</li>`).join(''):'<li class="muted">—</li>'}</ul></div>
+      </div>
+    </div>`;
+
+    // الأخبار
+    const nw = r.news||{};
+    if(nw.summary || arr(nw.key_events).length || nw.impact){
+      const impactColor = /إيجاب|positive|bull/i.test(nw.impact||'')?'var(--green)':(/سلب|negative|bear/i.test(nw.impact||'')?'var(--red)':'var(--muted)');
+      html += `<div class="card">
+        <h2><span class="ic">📰</span> قراءة الأخبار</h2>
+        <div class="pill-row"><span class="pill">التأثير على الذهب: <b style="color:${impactColor}">${escapeHtml(nw.impact||'—')}</b></span></div>
+        ${nw.summary?`<div class="block"><p>${escapeHtml(nw.summary)}</p></div>`:''}
+        ${arr(nw.key_events).length?`<div class="block"><h3>أهم الأحداث</h3><ul style="margin:4px 0 0;padding-inline-start:18px;font-size:13.5px">${arr(nw.key_events).map(e=>`<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`:''}
+      </div>`;
+    }
+
+    // الالتقاءات والتحذيرات
+    const conf2 = arr(r.confluences), warns = arr(r.warnings);
+    if(conf2.length || warns.length){
+      html += `<div class="card">`;
+      if(conf2.length) html += `<h2><span class="ic">🎯</span> عوامل الالتقاء</h2><div class="pill-row">${conf2.map(c=>`<span class="pill">✓ ${escapeHtml(c)}</span>`).join('')}</div>`;
+      if(warns.length) html += `<h2 style="margin-top:16px"><span class="ic">⚠️</span> تحذيرات وإدارة مخاطر</h2><ul class="warnlist">${warns.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul>`;
+      html += `</div>`;
+    }
+
+    const R = $('#results'); R.innerHTML = html; R.classList.add('on');
+    R.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  // =========================================================
+  //  زر التحليل
+  // =========================================================
+  function showErr(m){ const b=$('#errMsg'); b.textContent='⚠️ '+m; b.className='banner err on'; }
+  function clearErr(){ $('#errMsg').className='banner err'; }
+  function setStatus(on, txt){ const s=$('#status'); if(txt)$('#statusTxt').textContent=txt; s.classList.toggle('on',on); }
+
+  $('#analyze').addEventListener('click', async ()=>{
+    clearErr();
+    saveSettings();
+    const btn=$('#analyze'); btn.disabled=true;
+    setStatus(true,'جارٍ تحليل الشارت والسيولة والأخبار…');
+    try{
+      const full = await callClaude(txt=>{
+        // مؤشر تقدّم بسيط
+        setStatus(true,'يكتب التحليل… ('+txt.length+' حرف)');
+      });
+      const data = extractJson(full);
+      render(data);
+    }catch(e){
+      showErr(e.message||'حدث خطأ غير متوقع');
+    }finally{
+      setStatus(false);
+      btn.disabled=false;
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
